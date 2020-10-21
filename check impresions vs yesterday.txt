@@ -1,0 +1,117 @@
+////////П Р О В Е Р К А  П А Д Е Н И Я  П О К А З О В
+////////-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+////////Если в кампании кол-во показов по состоянию на сегодня в период с 00:00 до предыдущего часа снизилось на определенный в переменной percent процент,
+////////на почту придет уведомление c перечнем кампаний и количеством показов вчера
+////////-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+////////Настройте ежедневное выполнение на то время, к которому точно можно понять, что в кампаниях что-то сломалось, например 11:00.
+////////-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+////////Поменяйте настройки на 13, 18, 19, 20 строках.
+////////-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+////////По всем вопросам пишите https://t.me/boris_dziundziuk
+
+function main(){
+	var run = MccApp.accounts().withIds(['XXX-XXX-XXXX']).executeInParallel('doit'); //вместо XXX-XXX-XXXX используйте ID аккаунта, в котором нужно проверять кампании; можно указать больше аккаунтов в таком виде ['XXX-XXX-XXXX', 'YYY-YYY-YYYY', 'ZZZ-ZZZ-ZZZZ']
+}
+
+function doit() {
+  ///////O P T I O N S///////
+  var percent = 50; //если сегодня в кампании на percent показов меньше, чем вчера - придет уведомление на почту
+  var emailAddresses = ['email@gmail.com']; //впишите свой имейл; можно указать дополнительные имейлы в таком виде ['email1@gmail.com', 'email2@gmail.com']
+  var labelName = false; //если нужно проверять только кампании, отмеченные ярлыком, впишите название ярлыка - поменяйте false на 'НазваниеЯрлыка', т.е. должно получиться var labelName = 'НазваниеЯрлыка';
+  ///////////////////////////
+  
+  var date = new Date();
+  var currentHour = Utilities.formatDate(date, AdsApp.currentAccount().getTimeZone(),"HH");
+  
+  var campaignsYesterday = {};
+  var campaignsToday = {};
+  var campaignsCheck = [];
+  
+  for (var i = 0; i < currentHour; i++){
+    if (labelName){
+      var label = AdsApp.labels().withCondition('Name = "'+labelName+'"').get().next();
+      var report = AdsApp.report("SELECT CampaignName, Impressions FROM CAMPAIGN_PERFORMANCE_REPORT WHERE CampaignStatus = 'ENABLED' AND ServingStatus != 'ENDED' AND CampaignTrialType = 'BASE' AND HourOfDay = "+i+" AND Labels CONTAINS_ANY [" +label.getId()+ "] DURING YESTERDAY");
+    } else {
+      var report = AdsApp.report("SELECT CampaignName, Impressions, CampaignId FROM CAMPAIGN_PERFORMANCE_REPORT WHERE CampaignStatus = 'ENABLED' AND ServingStatus != 'ENDED' AND CampaignTrialType = 'BASE' AND HourOfDay = "+i+" DURING YESTERDAY");
+    }
+    var rows = report.rows();
+    while (rows.hasNext()){
+      var row = rows.next();
+      var campaignName = row['CampaignName'];
+      var impressions = row['Impressions'];
+      var totalImp = campaignsYesterday[campaignName];
+      if (totalImp == undefined){
+        campaignsYesterday[campaignName] = parseInt(impressions);
+      } else {
+          campaignsYesterday[campaignName] = parseInt(campaignsYesterday[campaignName]) + parseInt(impressions);
+      }
+    }
+  }
+    
+  for (var i = 0; i < currentHour; i++){
+    if (labelName){
+      var label = AdsApp.labels().withCondition('Name = "'+labelName+'"').get().next();
+      var report = AdsApp.report("SELECT CampaignName, Impressions FROM CAMPAIGN_PERFORMANCE_REPORT WHERE CampaignStatus = 'ENABLED' AND ServingStatus != 'ENDED' AND CampaignTrialType = 'BASE' AND HourOfDay = "+i+" AND Labels CONTAINS_ANY [" +label.getId()+ "] DURING TODAY");
+    } else {
+      var report = AdsApp.report("SELECT CampaignName, Impressions, CampaignId FROM CAMPAIGN_PERFORMANCE_REPORT WHERE CampaignStatus = 'ENABLED' AND ServingStatus != 'ENDED' AND CampaignTrialType = 'BASE' AND HourOfDay = "+i+" DURING TODAY");
+    }
+    var rows = report.rows();
+    while (rows.hasNext()){
+      var row = rows.next();
+      var campaignName = row['CampaignName'];
+      var impressions = row['Impressions'];
+      var totalImp = campaignsToday[campaignName];
+      if (totalImp == undefined){
+        campaignsToday[campaignName] = parseInt(impressions);
+      } else {
+          campaignsToday[campaignName] = parseInt(campaignsToday[campaignName]) + parseInt(impressions);
+      }
+    }
+  }
+  
+  for (var campaign in campaignsYesterday){
+    try {
+      var impressionsYesterday = campaignsYesterday[campaign];
+      var impressionsToday = campaignsToday[campaign];
+      var difference = ((impressionsToday - impressionsYesterday) / impressionsYesterday * 100) * -1;
+      if (impressionsToday == 0 || difference >= percent){
+        campaignsCheck.push(campaign);
+      }
+    } catch (e) {}
+  }
+  
+  if (campaignsCheck.length > 0){
+    var recipients = emailAddresses.join();
+    var accountName = AdsApp.currentAccount().getName();
+    var accountId = AdsApp.currentAccount().getCustomerId();
+    var subject = 'Показы в аккаунте ' + accountName + '(' + accountId + ') снизились на ' + percent + '%+';
+    
+    var body = '';
+    var thStart = '<th style="border: 1px solid black;padding:3px">';
+    var thEnd = '</th>';
+    var tdStart = '<td style="border: 1px solid black;padding:3px">';
+    var tdEnd = '</td>';
+    
+    body += '<table style="border: 1px solid black;border-collapse: collapse;">';
+    body += '<tr style="border: 1px solid black">';
+    body += thStart + 'Кампания' + thEnd;
+    body += thStart + 'Показы вчера' + thEnd;
+    body += thStart + 'Показы сегодня' + thEnd;
+
+    for (var i in campaignsCheck){
+      body += '<tr style="border: 1px solid black">';
+      body += tdStart + campaignsCheck[i] + tdEnd;
+      body += tdStart + campaignsYesterday[campaignsCheck[i]] + tdEnd;
+      body += tdStart + campaignsToday[campaignsCheck[i]] + tdEnd;
+      body += '</tr>';
+    }
+    
+    body += '</table>';
+    
+    MailApp.sendEmail({
+      to: recipients,
+      subject: subject,
+      htmlBody: body,
+    }); 
+  }
+}
