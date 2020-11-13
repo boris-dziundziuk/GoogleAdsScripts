@@ -1,1 +1,37 @@
-Формат даты: Utilities.formatDate(new Date(), "UTC", "yyyyMMdd")
+Форматирование даты:
+  Utilities.formatDate(new Date(), 'UTC', 'yyyyMMdd')
+  Utilities.formatDate(new Date(), 'EuropeKiev', 'yyyy-MM-dd');
+  Utilities.formatDate(new Date(), AdsApp.currentAccount().getTimeZone(), 'yyyyMMdd');
+
+Отправка письма:
+  var emailAddresses = ['email@gmail.com', 'email2@gmail.com'];
+  var campaignsCheck = ['Кампания1', 'Кампания2'];
+  
+  var recipients = emailAddresses.join();
+  var accountName = AdsApp.currentAccount().getName();
+  var accountId = AdsApp.currentAccount().getCustomerId();
+  var subject = 'Что-то произошло в аккаунте ' + accountName + '(' + accountId + ')';
+    
+  var body = '';
+  var thStart = '<th style="border: 1px solid black;padding:3px">';
+  var thEnd = '</th>';
+  var tdStart = '<td style="border: 1px solid black;padding:3px">';
+  var tdEnd = '</td>';
+    
+  body += '<table style="border: 1px solid black;border-collapse: collapse;">';
+  body += '<tr style="border: 1px solid black">';
+  body += thStart + 'Кампания' + thEnd;
+
+  for (var i in campaignsCheck){
+      body += '<tr style="border: 1px solid black">';
+      body += tdStart + campaignsCheck[i] + tdEnd;
+      body += '</tr>';
+    }
+    
+  body += '</table>';
+    
+  MailApp.sendEmail({
+    to: recipients,
+    subject: subject,
+    htmlBody: body,
+  }); 
