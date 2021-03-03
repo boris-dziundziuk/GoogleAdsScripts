@@ -1,0 +1,60 @@
+//Если хотите получать уведомление в телеграме, отправьте любое сообщение боту @PriceExtensionErrors_bot
+
+function main() {
+  var send_email = true; //если не хотите получать имейл, укажите false вместо true
+  var send_message = true; //если не хотите получать сообщение в телеграм, укажите false вместо true
+  
+  var email = ['email1@gmail.com.com']; //укажите свой имейл
+  var telegram = ['XXXXXXXXX']; //свой id можно узнать у бота в телеграмме @ShowJsonBot
+
+  var account = AdsApp.currentAccount();
+  var account_name = account.getName();
+  var account_id = account.getCustomerId();
+  var average_spend = account.getStatsFor('LAST_7_DAYS').getCost() / 7;
+  
+  var budget_orders = AdsApp.budgetOrders().withCondition("Status = ACTIVE").get();
+  var budget_order = budget_orders.next();
+  var start_date = time_format(budget_order.getStartDateTime());
+  
+  var limit = budget_order.getSpendingLimit();
+  var total_cost = account.getStatsFor(start_date,today()).getCost();
+  var amount_of_budget = (limit - total_cost).toFixed(2);
+  
+  var days_left = (amount_of_budget / (average_spend)).toFixed(1);
+  
+  if (send_email){
+    MailApp.sendEmail(email, 
+                      ''+account_name+' ('+account_id+') '+'- Остаток на сейчас',
+                      ''+amount_of_budget+' грн. Хватит примерно на '+days_left+' дн.');  
+  }
+  
+  if (send_message){
+    for (var i = 0; i < telegram.length; i++){
+      UrlFetchApp.fetch('https://api.telegram.org/bot667721358:AAGVcBGjmAHXwJSb3KpFotz5DxG441dF1cM/sendMessage?chat_id='+telegram[i]+'&text='+account_name+' ('+account_id+')'+' - Остаток на сейчас'+amount_of_budget+' грн. Хватит примерно на '+days_left+' дн.');
+    }
+  }  
+}
+
+  
+function time_format (date) {
+  var year = date.year.toString();
+  var month = date.month.toString();
+  var day = date.day.toString();
+  if (month.length == 1) {
+    month = "0"+month;
+  }
+  if (day.length == 1) {
+    day = "0"+day;
+  }
+  return [year,month,day].join("");
+}
+
+
+function today () {
+  var date = new Date();
+  var timeZone = AdWordsApp.currentAccount().getTimeZone();
+  var format = 'yyyyMMdd';
+  return Utilities.formatDate(date, timeZone, format);
+}
+
+
