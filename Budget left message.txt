@@ -6,6 +6,7 @@ function main() {
   
   var email = ['email1@gmail.com.com']; //укажите свой имейл
   var telegram = ['XXXXXXXXX']; //свой id можно узнать у бота в телеграмме @ShowJsonBot
+  var bot_id = 'xxxxxxxx'; //узнать id бота можно у @boris_dziundziuk
 
   var account = AdsApp.currentAccount();
   var account_name = account.getName();
@@ -30,7 +31,7 @@ function main() {
   
   if (send_message){
     for (var i = 0; i < telegram.length; i++){
-      UrlFetchApp.fetch('https://api.telegram.org/bot667721358:AAGVcBGjmAHXwJSb3KpFotz5DxG441dF1cM/sendMessage?chat_id='+telegram[i]+'&text='+account_name+' ('+account_id+')'+' - Остаток на сейчас'+amount_of_budget+' грн. Хватит примерно на '+days_left+' дн.');
+      UrlFetchApp.fetch('https://api.telegram.org/'+bot_id+'/sendMessage?chat_id='+telegram[i]+'&text='+account_name+' ('+account_id+')'+' - Остаток на сейчас'+amount_of_budget+' грн. Хватит примерно на '+days_left+' дн.');
     }
   }  
 }
